@@ -22,7 +22,7 @@ for each url of the form:
 
 or
 
-   <server>/g/<room_name>participants
+   <server>/g/<room_name>/<participants>
 
 so a sample url would be:
 
