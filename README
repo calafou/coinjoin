@@ -1,3 +1,5 @@
+RUNNING:
+
 to run the client install Python PyQt4, and sx (see http://sx.dyne.org)
 
   # apt-get install python-pyqt4
@@ -8,8 +10,10 @@ then run it:
 
   $ python client.py
 
--------------------
-- Server Protocol:
+TECHICAL INFO:
+
+ - client is pyqt + sx
+ - server is gevent + flask + sx
 
 Client and server speak a json protocol where a room is created
 for each url of the form:
