@@ -10,7 +10,56 @@ then run it:
 
   $ python client.py
 
-TECHICAL INFO:
+TECHNICAL INFO:
+
+Clients use the server as a rendezvous point.
+
+The goal of the clients is to get a list of N inputs and N outputs
+for a specific locked amount, so a transaction can be created by all
+to sign.
+
+Since clients won't sign the transaction if they don't see their
+inputs and outputs, or amounts match, the problem is just getting 
+inputs and outputs in a way so they can't be correlated to know who
+owns the outputs.
+
+In our case the server takes up the following tasks:
+ 1) locks "rooms" for  number of participants
+ 2) collects outputs, then inputs for all participants, then shows
+   the collected information, together with a transaction with all
+   the info, clients have to sign the transaction and return it back.
+ 3) mixes the transactions into one final transaction signed by all,
+    and broadcasts it to clients and to the network.
+
+The server doesn't hold funds, and the client can check the final
+transaction before signing it so no trust is put on the server.
+
+The server keeps all information in memory.
+
+The setup is implemented with the premise that server and client can't
+see each other's ip, specially the server can't see the client ip. To
+avoid user error we enforce the service to run over tor, but other
+anonymizing network could be used.
+
+POSSIBLE ATTACKS:
+
+We've thought about the possible attacks that can be done on this approach:
+
+ - Sybil attack:
+   An attacker with many nodes could cheaply (just transaction costs) run many transactions to basically isolate other users.
+ - Ddos attack:
+   Attackers can boicott ongoing transactions so users have to restart again and again most probably also leaking privacy information specially if outputs are retried.
+ - Tor correlation:
+   Input and output for a client should be sent from connections as difficult to correlate as possible. Right now we don't enfore this and possibly is the best vector of attack, but could be easily enforced so a totally new connection is created. For best result we should use a totally different network for outputs.
+
+FUTURE WORK:
+
+This is intended as a first proof of concept for a "coinjoin" protocol
+where different rendezvous mechanisms will be tested in order to collect inputs and outputs for creating multi-sig transactions among different wallets.
+
+Server mechanisms ease the practical access by users and initial deployment, totally serverless mechanisms should follow using readily available procedures.
+
+PROTOCOL:
 
  - client is pyqt + sx
  - server is gevent + flask + sx
