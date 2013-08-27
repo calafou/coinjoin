@@ -164,7 +164,8 @@ def coinj_get(secret, participants=3):
     return jsonify(t.report_status())
 
 @app.route('/g/<secret>', methods=['POST'])
-def coinj_post(secret):
+@app.route('/g/<secret>/<participants>', methods=['POST'])
+def coinj_post(secret, participants=3):
     """
      POST information into a CoinJoin
     """
