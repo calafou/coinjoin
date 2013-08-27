@@ -8,3 +8,41 @@ then run it:
 
   $ python client.py
 
+-------------------
+- Server Protocol:
+
+Client and server speak a json protocol where a room is created
+for each url of the form:
+
+   <server>/g/<room_name>
+
+or
+
+   <server>/g/<room_name>participants
+
+so a sample url would be:
+
+   http://7vxb75tbnszhy2go.onion/g/goy7yeiXopethi
+
+The first time a url is accessed with GET the room gets created
+and starts collecting information.
+
+Rooms go through several states or stages, one at a time:
+ * outputs: Collecting outputs
+ * inputs: Collecting inputs
+ * signatures: Collecting signatures
+ * final: final tx available (and broadcasted)
+
+In each stage each client has to send their specific argument, after
+collecting inputs and outputs a tx for signing is generated and each
+client signs their own, finally the server mixes the result into the
+final tx.
+
+Clients send their input through POST to the room url:
+
+POST parameters:
+ - input: send our client input (only allowed in inputs stage)
+ - output: send our client output (only allowed in outputs stage)
+ - sig: send out signature (only allowed in signature stage)
+
+
