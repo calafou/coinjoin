@@ -1,0 +1,10 @@
+to run the client install Python PyQt4, and sx (see http://sx.dyne.org)
+
+  # apt-get install python-pyqt4
+  # wget http://sx.dyne.org/install-sx.sh
+  # bash install-sx.sh
+
+then run it:
+
+  $ python client.py
+
