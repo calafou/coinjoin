@@ -68,7 +68,7 @@ class SimpleCoinJoin(object):
         res = mktx.mktx(list(self.inputs), self.outputs)
         if not res:
             self._error = 'Could not create transaction'
-            raise Exception("Could not create transaction")
+            return
         self._tx = res
 
     def next_state(self, curr_state):
@@ -181,11 +181,11 @@ def coinj_post(secret):
         if message:
             t.add_message(message)
         # Execute commands
-        if input:
+        if input and input.isalnum():
             return jsonify({'status': t.add('inputs', input)})
-        elif output:
+        elif output and output.isalnum():
             return jsonify({'status': min(t.add('outputs', output), 0)})
-        elif sig:
+        elif sig and sig.isalnum():
             sig_idx = int(request.form.get('sig_idx'))
             return jsonify({'status': min(t.add('signatures', [sig_idx, sig]), 0)})
         # if no command return error
