@@ -7,8 +7,32 @@ from urllib2 import urlopen
 from urllib import urlencode
 import json
 import time
+import socket
 
 AMOUNT = 1000000 # 0.01
+TOR_PASSWORD = 'yourpassword'
+
+def restart_tor_connection(password, host='localhost', port=9051):
+    """
+    Instruct tor to establish a new circuit
+    """
+    sock = socket.socket()
+    sock.connect((host, port))
+
+    password = password.encode('hex')
+
+    sock.send('AUTHENTICATE %s\r\n' % (password,))
+
+    res = sock.recv(1024)
+    code, text = res.split(' ', 1)
+    if not code == '250':
+        raise Exception('Could not authenticate tor control connection. Check README for configuration details.')
+
+    sock.send('signal NEWNYM\r\n')
+    res, text = sock.recv(1024).split(' ', 1)
+    if not code == '250':
+        raise Exception('Could not reset tor circuit')
+
 
 class WorkThread(QtCore.QThread):
   def __init__(self, url, output_addr, wallet):
@@ -29,7 +53,12 @@ class WorkThread(QtCore.QThread):
 
         # Send output address
         interface.send_output_address(self._output_addr)
+
+	restart_tor_connection(TOR_PASSWORD)
+
         interface.wait_for_outputs()
+
+	restart_tor_connection(TOR_PASSWORD)
 
         # Begin stage 2
         self.emit_status('Stage: Inputs')
@@ -214,7 +243,9 @@ class MainWindow(QWidget):
 
     def anonymize(self):
         self.anonymize_button.setEnabled(False)
+        # test restarting tor connection before doing anything
         try:
+	    restart_tor_connection(TOR_PASSWORD)
             self.perform_operation()
         except Exception as e:
             self.finish(e.message)

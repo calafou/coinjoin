@@ -6,6 +6,13 @@ to run the client install Python PyQt4, and sx (see http://sx.dyne.org)
   # wget http://sx.dyne.org/install-sx.sh
   # bash install-sx.sh
 
+Tor control configuration:
+
+  In order to allow the application to reset your tor connection between coinjoin stages, you first need to
+  setup your tor control password (HashedControlPassword in /etc/tor/torrc, also uncomment ControlPort line).
+
+  Then edit client.py and set your control password there.
+
 then run it:
 
   $ python client.py
@@ -49,8 +56,6 @@ We've thought about the possible attacks that can be done on this approach:
    An attacker with many nodes could cheaply (just transaction costs) run many transactions to basically isolate other users.
  - Ddos attack:
    Attackers can boicott ongoing transactions so users have to restart again and again most probably also leaking privacy information specially if outputs are retried.
- - Tor correlation:
-   Input and output for a client should be sent from connections as difficult to correlate as possible. Right now we don't enfore this and possibly is the best vector of attack, but could be easily enforced so a totally new connection is created. For best result we should use a totally different network for outputs.
 
 FUTURE WORK:
 
