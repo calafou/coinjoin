@@ -24,7 +24,7 @@ def add_fee(amount):
 def parse_amount(amount):
     return int(Decimal(amount)*Decimal('100000000'))
 
-def restart_tor_connection(password, host='localhost', port=9051):
+def restart_tor_connection(password, host='127.0.0.1', port=9051):
     """
     Instruct tor to establish a new circuit
     """
@@ -65,24 +65,34 @@ class WorkThread(QtCore.QThread):
 
   def run(self):
         # Begin stage 1
+        amount = self._amount
         interface = ServerInterface(str(self._url), self.emit_status, self._amount)
-        self.emit_status('Stage: Outputs')
-        amount = interface.stage1()
+
+        self.emit_status('Stage: Disco')
+        data = interface.stage1()
+        curr_state = data['status']
         self.emit_amount(amount)
+        self.emit_status('Entering room (%s)' % curr_state)
 
         # Send output address
-        interface.send_output_address(self._output_addr)
+        if curr_state == 'outputs':
+            self.emit_status('Stage: Outputs')
+            interface.send_output_address(self._output_addr)
 
-	restart_tor_connection(TOR_PASSWORD)
+	    restart_tor_connection(TOR_PASSWORD)
 
-        interface.wait_for_outputs()
+            data = interface.wait_for_outputs()
+            curr_state = data['status']
 
 	restart_tor_connection(TOR_PASSWORD)
 
         # Begin stage 2
-        self.emit_status('Stage: Inputs')
-        interface.stage2()
-        interface.send_input_address(self._input_addr)
+	if curr_state == 'inputs':
+            self.emit_status('Stage: Inputs')
+            interface.stage2()
+            interface.send_input_address(self._input_addr)
+
+        # Now get the transaction for signing
         unsigned_tx, input_index = interface.wait_for_tx()
 
         # Save tx to file.
@@ -96,12 +106,16 @@ class WorkThread(QtCore.QThread):
         if not tx.outputs_all_equal(amount):
             self.emit_status('Outs dont equal')
             raise Exception("Some outputs don't equal %.4f BTC." % (AMOUNT/100000000))
-        # Sign tx input.
-        tx.sign_input(self._wallet.filename, input_index)
-        # Read back data and send to server.
-        interface.send_tx(tx.signed_tx_data())
 
-        self.emit_status('Stage: Signatures')
+        if curr_state != 'final':
+            self.emit_status('Stage: Signing')
+            # Sign tx input.
+            tx.sign_input(self._wallet.filename, input_index)
+            # Read back data and send to server.
+            interface.send_tx(tx.signed_tx_data())
+
+
+        self.emit_status('Stage: Final')
         data = interface.wait_for_signed_inputs()
 
         final_tx = data['final-transaction']
@@ -150,7 +164,7 @@ class ServerInterface:
 
     def wait_for(self, next_state, what):
         data = self.send()
-        while not data['status'] == next_state:
+        while not data['status'] in next_state:
             if data['status'] == 'error':
                 self._emit("Error on server: %s" % data['error'])
             else:
@@ -167,20 +181,21 @@ class ServerInterface:
 
     # Stages
     def stage1(self):
-        data = self.check_state('outputs')
+        #data = self.check_state('outputs')
+        data = self.send()
         room_amount = parse_amount(data['amount'])
         if not room_amount == self._amount:
             self.throw_error("Amounts don't match %d != %d" % (room_amount, self._amount))
-        return room_amount
+        return data
 
     def send_output_address(self, address):
         data = self.send({'output': address})
 
     def wait_for_outputs(self):
-        return self.wait_for('inputs', 'outputs')
+        return self.wait_for(['inputs'], 'outputs')
 
     def wait_for_inputs(self):
-        return self.wait_for('signatures', 'inputs')
+        return self.wait_for(['signatures', 'final'], 'inputs')
 
     def stage2(self):
         self.check_state('inputs')
@@ -202,7 +217,7 @@ class ServerInterface:
         data = self.send({'sig': tx, 'sig_idx': self._client_index})
 
     def wait_for_signed_inputs(self):
-        return self.wait_for('final', 'signatures')
+        return self.wait_for(['final'], 'signatures')
 
 class Transaction:
 
