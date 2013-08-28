@@ -8,5 +8,5 @@ def validate_address(address):
     return "Success" in call("sx validaddr %s" % address)
 
 def parse_amount(amount):
-    return int(Decimal(amount)*100000000)
+    return int(Decimal(amount)*Decimal('100000000'))
 
