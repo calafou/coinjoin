@@ -28,6 +28,8 @@ def restart_tor_connection(password, host='localhost', port=9051):
     """
     Instruct tor to establish a new circuit
     """
+    # can't do it from within torify..
+    return
     sock = socket.socket()
     sock.connect((host, port))
 
