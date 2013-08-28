@@ -7,7 +7,7 @@ to run the client install Python PyQt4, and sx (see http://sx.dyne.org)
   # bash install-sx.sh
 
 Tor control configuration:
-
+  (not needed at the moment)
   In order to allow the application to reset your tor connection between coinjoin stages, you first need to
   setup your tor control password (HashedControlPassword in /etc/tor/torrc, also uncomment ControlPort line).
 
