@@ -24,16 +24,16 @@ def query_unspent_outputs(addr_list, min_amount):
     assert len(unspent) == len(addr_list)
     return unspent
 
-def mktx(input_addrs, output_addrs):
+def mktx(input_addrs, output_addrs, amount=AMOUNT):
     tf = tempfile.NamedTemporaryFile()
     command = "sx mktx %s" % tf.name
-    inputs = query_unspent_outputs(input_addrs, AMOUNT)
+    inputs = query_unspent_outputs(input_addrs, amount)
     if inputs is None:
         return None
     for tx_input in inputs:
         command += " --input %s" % tx_input
     for address in output_addrs:
-        command += " --output %s:%s" % (address, AMOUNT)
+        command += " --output %s:%s" % (address, amount)
     call(command)
     return tf.read()
 

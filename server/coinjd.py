@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import random
+from decimal import Decimal
 
 from flask import request
 from g3 import app, jsonify, server
@@ -14,14 +15,25 @@ import util
 
 transactions = {}
 
+def is_public_tx(tx_key):
+    # consider public if secret starts with 'public' and is still
+    # gathering participants
+    transaction = transactions[tx_key]
+    if tx_key.startswith('public') and transaction.status == 'outputs':
+        return True
+
+def get_public_tx():
+    return filter(is_public_tx, transactions.keys())
+
 
 ##################################
 # Simple CoinJoin Mechanism
 
 class SimpleCoinJoin(object):
-    def __init__(self, nparticipants):
+    def __init__(self, nparticipants, amount):
         self._nparticipants = nparticipants
         self._tx = None
+        self._amount = amount
         self._error = None
         self._final_tx = None
         self._sets = ['outputs', 'inputs', 'signatures']
@@ -65,7 +77,8 @@ class SimpleCoinJoin(object):
         random.shuffle(self.outputs)
 
         # generate the transaction so clients can sign it
-        res = mktx.mktx(list(self.inputs), self.outputs)
+        amount = util.parse_amount(self._amount)
+        res = mktx.mktx(list(self.inputs), self.outputs, amount)
         if not res:
             self._error = 'Could not create transaction'
             return
@@ -133,6 +146,7 @@ class SimpleCoinJoin(object):
             status[set_name] = len(filter(lambda s: not s == '', getattr(self, set_name)))
 
         status['target'] = self._nparticipants
+        status['amount'] = self._amount
         status['messages'] = list(self.messages)
         if self._tx:
             status['transaction'] = self._tx
@@ -152,20 +166,24 @@ class SimpleCoinJoin(object):
 
 @app.route('/g/<secret>', methods=['GET'])
 @app.route('/g/<secret>/<participants>', methods=['GET'])
-def coinj_get(secret, participants=3):
+@app.route('/g/<secret>/<participants>/<amount>', methods=['GET'])
+def coinj_get(secret, participants=3, amount='0.01'):
     """
      GET information for a CoinJoin
     """
     if secret in transactions:
         t = transactions[secret]
     else:
-        t = SimpleCoinJoin(participants)
+        # validate but keep as str for now
+        amount = str(Decimal(amount))
+        t = SimpleCoinJoin(participants, amount)
         transactions[secret] = t
     return jsonify(t.report_status())
 
 @app.route('/g/<secret>', methods=['POST'])
 @app.route('/g/<secret>/<participants>', methods=['POST'])
-def coinj_post(secret, participants=3):
+@app.route('/g/<secret>/<participants>/<amount>', methods=['POST'])
+def coinj_post(secret, participants=3, amount='0.01'):
     """
      POST information into a CoinJoin
     """
@@ -194,9 +212,26 @@ def coinj_post(secret, participants=3):
     # group not found
     return jsonify({'error': 'Group does not exist'}, 404)
 
+
 @app.route('/')
 def page():
-    return jsonify({'status': "ALL SYSTEMS GO GO"})
+    """
+    Print public transactions
+    """
+    public_open_tx = get_public_tx()
+    descriptions = map(lambda s: "<a href='/g/%s'>%s</a> %s/%s (%s btc)" % (s, s[6:], len(transactions[s].outputs), transactions[s]._nparticipants, transactions[s]._amount), public_open_tx)
+    return "<li>"+"</li><li>".join(descriptions)+"</li>"
+
+@app.route('/public')
+def page_json():
+     """
+     Print public transactions in json format
+     """
+     return jsonify({'links': map(lambda s: transactions[s].report_status(), get_public_tx())})
+
+@app.route('/status')
+def status_page():
+    return jsonify({'status': "ALL SYSTEMS GO GO", 'transactions': len(transactions)})
 
 
 ##################################
