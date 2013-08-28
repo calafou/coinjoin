@@ -102,6 +102,19 @@ class SimpleCoinJoin(object):
                 self.enter_signing_stage()
             return state
 
+    def add_input(self, data):
+        # add data to the set, and change state if we're done
+        # collecting information for this stage.
+        dest_set = self.inputs
+        if len(dest_set) < self._nparticipants and not data in dest_set:
+            dest_set.append(data)
+            if len(dest_set) == self._nparticipants:
+                self.status = self.next_state('inputs')
+        if data in dest_set:
+            return dest_set.index(data)
+        else:
+            return -1
+
     def add(self, curr_state, data):
         """
          Add a data item for given state
@@ -201,16 +214,16 @@ def coinj_post(secret, participants=3, amount='0.01'):
             t.add_message(message)
         # Execute commands
         if input and input.isalnum():
-            return jsonify({'status': t.add('inputs', input)})
+            return jsonify({'status': t.add_input(input)})
         elif output and output.isalnum():
             return jsonify({'status': min(t.add('outputs', output), 0)})
         elif sig:
             sig_idx = int(request.form.get('sig_idx'))
             return jsonify({'status': min(t.add('signatures', [sig_idx, sig]), 0)})
         # if no command return error
-        return jsonify({'error': 'Invalid command', 'status': -1}, 404)
+        return jsonify({'error': 'Invalid command', 'status': -1}, 402)
     # group not found
-    return jsonify({'error': 'Group does not exist'}, 404)
+    return jsonify({'error': 'Group does not exist'}, 400)
 
 
 @app.route('/')
@@ -220,7 +233,7 @@ def page():
     """
     public_open_tx = get_public_tx()
     descriptions = map(lambda s: "<a href='/g/%s'>%s</a> %s/%s (%s btc)" % (s, s[6:], len(transactions[s].outputs), transactions[s]._nparticipants, transactions[s]._amount), public_open_tx)
-    return "<li>"+"</li><li>".join(descriptions)+"</li>"
+    return "<h3>Mixer Lobby</h3><li>"+"</li><li>".join(descriptions)+"</li>"
 
 @app.route('/public')
 def page_json():
