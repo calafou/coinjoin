@@ -103,8 +103,8 @@ class SimpleCoinJoin(object):
             return state
 
     def add_input(self, data):
-        # add data to the set, and change state if we're done
-        # collecting information for this stage.
+        if self.status == 'outputs':
+            return -1
         dest_set = self.inputs
         if len(dest_set) < self._nparticipants and not data in dest_set:
             dest_set.append(data)
