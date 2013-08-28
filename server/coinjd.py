@@ -176,7 +176,7 @@ def coinj_get(secret, participants=3, amount='0.01'):
     else:
         # validate but keep as str for now
         amount = str(Decimal(amount))
-        t = SimpleCoinJoin(participants, amount)
+        t = SimpleCoinJoin(int(participants), amount)
         transactions[secret] = t
     return jsonify(t.report_status())
 
