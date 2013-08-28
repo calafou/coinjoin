@@ -5,12 +5,24 @@ from PyQt4 import Qt, QtCore
 from PyQt4.QtGui import *
 from urllib2 import urlopen
 from urllib import urlencode
+from decimal import Decimal
 import json
 import time
 import socket
 
-AMOUNT = 1000000 # 0.01
 TOR_PASSWORD = 'yourpassword'
+
+MAX_FEE = 100000 # 0.001
+DEFAULT_AMOUNT = '0.01' # can be overriden through command line
+
+def add_fee(amount):
+    fee = amount / 100
+    if fee > MAX_FEE:
+        fee = MAX_FEE
+    return amount + fee
+
+def parse_amount(amount):
+    return int(Decimal(amount)*Decimal('100000000'))
 
 def restart_tor_connection(password, host='localhost', port=9051):
     """
@@ -35,9 +47,10 @@ def restart_tor_connection(password, host='localhost', port=9051):
 
 
 class WorkThread(QtCore.QThread):
-  def __init__(self, url, output_addr, wallet):
+  def __init__(self, url, output_addr, wallet, amount):
         QtCore.QThread.__init__(self)
         self._url = url
+        self._amount = amount
         self._output_addr = output_addr
         self._input_addr = wallet.address()
         self._wallet = wallet
@@ -45,11 +58,15 @@ class WorkThread(QtCore.QThread):
   def emit_status(self, text):
         self.emit( QtCore.SIGNAL('status(QString)'), text )
 
+  def emit_amount(self, amount):
+        self.emit( QtCore.SIGNAL('amount(QString)'), str(amount) )
+
   def run(self):
         # Begin stage 1
-        interface = ServerInterface(str(self._url), self.emit_status)
+        interface = ServerInterface(str(self._url), self.emit_status, self._amount)
         self.emit_status('Stage: Outputs')
-        interface.stage1()
+        amount = interface.stage1()
+        self.emit_amount(amount)
 
         # Send output address
         interface.send_output_address(self._output_addr)
@@ -74,7 +91,7 @@ class WorkThread(QtCore.QThread):
             self.emit_status('Tx missing')
             raise Exception("Our output address is missing from the server's transaction!")
         # Check the outputs are for AMOUNT BTC.
-        if not tx.outputs_all_equal(AMOUNT):
+        if not tx.outputs_all_equal(amount):
             self.emit_status('Outs dont equal')
             raise Exception("Some outputs don't equal %.4f BTC." % (AMOUNT/100000000))
         # Sign tx input.
@@ -107,9 +124,10 @@ class Wallet:
 
 class ServerInterface:
 
-    def __init__(self, url, emit):
+    def __init__(self, url, emit, amount):
         self._url = url
         self._emit = emit
+        self._amount = amount
 
     def throw_error(self, message):
         self._emit(message)
@@ -143,10 +161,15 @@ class ServerInterface:
         data = self.send()
         if not data['status'] == state:
             self.throw_error("Group is not in %s stage!" % (state,))
+        return data
 
     # Stages
     def stage1(self):
-        self.check_state('outputs')
+        data = self.check_state('outputs')
+        room_amount = parse_amount(data['amount'])
+        if not room_amount == self._amount:
+            self.throw_error("Amounts don't match %d != %d" % (room_amount, self._amount))
+        return room_amount
 
     def send_output_address(self, address):
         data = self.send({'output': address})
@@ -210,17 +233,19 @@ class Transaction:
 
 class MainWindow(QWidget):
 
-    def __init__(self, wallet, url, output_address):
+    def __init__(self, wallet, url, output_address, amount):
         super(MainWindow, self).__init__()
         self.wallet = wallet
+        self.amount = parse_amount(amount)
 
         self.resize(500, 240)
         self.setWindowTitle("Mixing")
         grid = QGridLayout(self)
         grid.setSpacing(2)
         # Top row
-        amount_str = "%.4f" % ((AMOUNT + 10000)/100000000.0)
-        grid.addWidget(QLabel("Send %s BTC to:" % amount_str), 0, 0)
+        amount_str = "%.5f" % (add_fee(self.amount)/100000000.0)
+        self.send_w = QLabel("Send %s BTC to:" % amount_str)
+        grid.addWidget(self.send_w, 0, 0)
         addr_display = QLineEdit(self.wallet.address(), self)
         addr_display.setReadOnly(True)
         grid.addWidget(addr_display, 0, 1)
@@ -266,12 +291,16 @@ class MainWindow(QWidget):
     def from_interface(self, message):
         self.status.showMessage(message)
  
+    def got_amount(self, amount):
+        self.status.showMessage('Locked amount: ' + amount)
+ 
     def perform_operation(self):
         url = self.user_url.text()
         output_addr = self.user_output.text()
-        self.workThread = WorkThread(str(url), str(output_addr), self.wallet)
+        self.workThread = WorkThread(str(url), str(output_addr), self.wallet, self.amount)
         self.connect( self.workThread, QtCore.SIGNAL("status(QString)"), self.from_interface )
         self.connect( self.workThread, QtCore.SIGNAL("finished(QString)"), self.operation_finished )
+        self.connect( self.workThread, QtCore.SIGNAL("amount(QString)"), self.got_amount )
         self.workThread.start()
 
     def finish(self, message):
@@ -279,18 +308,21 @@ class MainWindow(QWidget):
         QApplication.quit()
 
 def main():
-    private_key = 'private.key'
+    amount = DEFAULT_AMOUNT
     if len(sys.argv) >= 2:
-        private_key = sys.argv[1]
-    url = ""
+        amount = sys.argv[1]
+    private_key = 'private.key'
     if len(sys.argv) >= 3:
-        url = sys.argv[2]
-    output_address = ""
+        private_key = sys.argv[2]
+    url = ""
     if len(sys.argv) >= 4:
-        output_address = sys.argv[3]
+        url = sys.argv[3]
+    output_address = ""
+    if len(sys.argv) >= 5:
+        output_address = sys.argv[4]
     app = QApplication([])
     wallet = Wallet(private_key)
-    window = MainWindow(wallet, url, output_address)
+    window = MainWindow(wallet, url, output_address, amount)
     return app.exec_()
 
 if __name__ == "__main__":
