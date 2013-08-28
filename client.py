@@ -87,13 +87,11 @@ class WorkThread(QtCore.QThread):
 	restart_tor_connection(TOR_PASSWORD)
 
         # Begin stage 2
-	if curr_state == 'inputs':
-            self.emit_status('Stage: Inputs')
-            interface.stage2()
-            interface.send_input_address(self._input_addr)
+        self.emit_status('Stage: Inputs')
+        input_index = interface.send_input_address(self._input_addr)
 
         # Now get the transaction for signing
-        unsigned_tx, input_index = interface.wait_for_tx()
+        unsigned_tx = interface.wait_for_tx()
 
         # Save tx to file.
         self.emit_status('Stage: save tx')
@@ -197,21 +195,16 @@ class ServerInterface:
     def wait_for_inputs(self):
         return self.wait_for(['signatures', 'final'], 'inputs')
 
-    def stage2(self):
-        self.check_state('inputs')
-
     def send_input_address(self, address):
         data = self.send({'input': address})
         self._client_index = data['status']
+        return self._client_index
 
     def wait_for_tx(self):
         data = self.wait_for_inputs()
         if not 'transaction' in data:
             self.throw_error('Server sent no transaction to sign!!')
-        tx = data['transaction']
-        idx = self._client_index
-        # Returns (tx, input_index)
-        return (tx, idx)
+        return data['transaction']
 
     def send_tx(self, tx):
         data = self.send({'sig': tx, 'sig_idx': self._client_index})
