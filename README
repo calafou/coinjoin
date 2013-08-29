@@ -7,7 +7,7 @@ to run the client install Python PyQt4, and sx (see http://sx.dyne.org)
   # bash install-sx.sh
 
 Tor control configuration:
-
+  (not needed at the moment)
   In order to allow the application to reset your tor connection between coinjoin stages, you first need to
   setup your tor control password (HashedControlPassword in /etc/tor/torrc, also uncomment ControlPort line).
 
@@ -102,5 +102,14 @@ POST parameters:
  - input: send our client input (only allowed in inputs stage)
  - output: send our client output (only allowed in outputs stage)
  - sig: send out signature (only allowed in signature stage)
+
+LICENSE:
+ This work is released under AGPL v3, check COPYRIGHT file for more details.
+
+ Since this is quite low level work we're happy to see it used in other places, although we're more comfortable with
+ releasing the code under AGPL to promote a more open ecosystem, please get in touch with us if you want to incorporate
+ our code into incompatible licenses.
+
+
 
 
