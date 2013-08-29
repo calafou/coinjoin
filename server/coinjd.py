@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import re
 import random
 from decimal import Decimal
 
@@ -212,6 +213,8 @@ def coinj_post(secret, participants=3, amount='0.01'):
         elif output and output.isalnum():
             return jsonify({'status': min(t.add('outputs', output), 0)})
         elif sig:
+            # only alphanumeric and colon
+            sig = re.sub(r'[^a-zA-Z0-9:]', '', sig)
             sig_idx = int(request.form.get('sig_idx'))
             return jsonify({'status': min(t.add('signatures', [sig_idx, sig]), 0)})
         # if no command return error

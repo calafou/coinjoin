@@ -76,7 +76,7 @@ for each url of the form:
 
 or
 
-   <server>/g/<room_name>/<participants>
+   <server>/g/[public]<room_name>/<participants>/<amount>
 
 so a sample url would be:
 
