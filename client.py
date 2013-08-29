@@ -197,7 +197,7 @@ class ServerInterface:
 
     def send_input_address(self, address):
         data = self.send({'input': address})
-        self._client_index = data['status']
+        self._client_index = int(data['status'])
         return self._client_index
 
     def wait_for_tx(self):
