@@ -165,12 +165,6 @@ class SimpleCoinJoin(object):
             status['transaction'] = self._tx
         if self._final_tx:
             status['final-transaction'] = self._final_tx
-
-        # if final or signatures show all data
-        if self.status in ['final', 'signatures']:
-            status['data'] = {}
-            for set_name in self._sets:
-                status['data'][set_name] = list(getattr(self, set_name))
         return status
 
 
