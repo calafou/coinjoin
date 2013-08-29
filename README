@@ -103,4 +103,13 @@ POST parameters:
  - output: send our client output (only allowed in outputs stage)
  - sig: send out signature (only allowed in signature stage)
 
+LICENSE:
+ This work is released under AGPL v3, check COPYRIGHT file for more details.
+
+ Since this is quite low level work we're happy to see it used in other places, although we're more comfortable with
+ releasing the code under AGPL to promote a more open ecosystem, please get in touch with us if you want to incorporate
+ our code into incompatible licenses.
+
+
+
 
