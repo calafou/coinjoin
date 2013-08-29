@@ -14,10 +14,12 @@ def set_input_script(txfile, i, script):
 
 def mix(rawtx_list, template_tx):
     result_tx = tempfile.NamedTemporaryFile()
-    call("echo %s > %s" % (template_tx, result_tx.name))
+    result_tx.write(template_tx)
+    result_tx.flush()
     for i, rawtx in enumerate(rawtx_list):
         tf = tempfile.NamedTemporaryFile()
-        call("echo %s > %s" % (rawtx, tf.name))
+        tf.write(rawtx)
+        tf.flush()
         if count_inputs(tf.name) != len(rawtx_list):
             return None
         script = extract_script(tf.name, i)
